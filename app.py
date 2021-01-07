@@ -41,6 +41,25 @@ def get_post(SHORTCODE):
     except:
         return ""
 
+def get_post2(SHORTCODE, u, p):
+    try:
+        L.login(u, p)
+        post = instaloader.Post.from_shortcode(L.context, SHORTCODE)
+        typename = post.typename
+
+        url_arr = []
+
+        if typename=="GraphSidecar":
+            for p in post.get_sidecar_nodes():
+                url_arr.append(get_link(p))
+        else:
+            url_arr.append(get_link(post))
+         
+        jsona = json.dumps(url_arr)
+        return jsona
+    except:
+        return ""
+
 def test(a):
     return a
 
@@ -52,6 +71,10 @@ def home():
 @app.route('/gp/<link_url>', methods=['GET'])
 def gp(link_url):
     return get_post(link_url)
+
+@app.route('/gp2/<link_url>/<u>/<p>', methods=['GET'])
+def gp2(link_url):
+    return get_post2(link_url, u, p)
 
 @app.route('/t/<link_url>', methods=['GET'])
 def t(link_url):
