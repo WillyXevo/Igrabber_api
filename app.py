@@ -64,23 +64,26 @@ def gp_request(SHORTCODE):
 	if matches:
 		x = matches.group(1)
 		y = json.loads(x)
-		__typename = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["__typename"]
-		ret = []
-		if __typename == "GraphImage":
-			sm = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
-			ret.append(GraphImage(sm))
-		elif __typename == "GraphVideo":
-			sm = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
-			ret.append(GraphVideo(sm))
-		elif __typename == "GraphSidecar":
-			edge = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]
-			for e in edge:
-				typename = e["node"]["__typename"]
-				sm = e["node"]
-				if typename == "GraphVideo":
-					ret.append(GraphVideo(sm))
-				else:
-					ret.append(GraphImage(sm))
+		if "PostPage" in y["entry_data"]:
+			__typename = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["__typename"]
+			ret = []
+			if __typename == "GraphImage":
+				sm = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
+				ret.append(GraphImage(sm))
+			elif __typename == "GraphVideo":
+				sm = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
+				ret.append(GraphVideo(sm))
+			elif __typename == "GraphSidecar":
+				edge = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]
+				for e in edge:
+					typename = e["node"]["__typename"]
+					sm = e["node"]
+					if typename == "GraphVideo":
+						ret.append(GraphVideo(sm))
+					else:
+						ret.append(GraphImage(sm))
+		else:
+			return ""
 		return json.dumps(ret)
 	else:
 		return ""
