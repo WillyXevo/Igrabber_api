@@ -2,7 +2,8 @@ import flask
 from flask import request, jsonify, json
 import instaloader
 from instaloader import Profile, LoginRequiredException
-import base64
+import base64, re
+from requests import get, post
 
 uag = "Mozilla/5.0 (Linux; Android 9; SM-A102U Build/PPR1.180610.011; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.136 Mobile Safari/537.36 Instagram 155.0.0.37.107 Android (28/9; 320dpi; 720x1468; samsung; SM-A102U; a10e; exynos7885; en_US; 239490550)"
 L = instaloader.Instaloader(user_agent=uag)
@@ -41,24 +42,66 @@ def get_link(p):
             display = p.url
         return {'is_video':"false", 'url':display}
 
+def GraphImage(sm):
+    ds = sm["display_resources"]
+    src = ds[len(ds)-1]["src"]
+    return {"is_video":"false", "url":src}
+
+def GraphVideo(sm):
+    ds = sm["video_url"]
+    return {"is_video":"true", "url":ds}
 
 def get_post(SHORTCODE):
-    try:
-        post = instaloader.Post.from_shortcode(L.context, SHORTCODE)
-        typename = post.typename
+    uag = "Mozilla/5.0 (Linux; Android 9; SM-A102U Build/PPR1.180610.011; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.136 Mobile Safari/537.36 Instagram 155.0.0.37.107 Android (28/9; 320dpi; 720x1468; samsung; SM-A102U; a10e; exynos7885; en_US; 239490550)"
+    headers = {
+        'User-Agent': uag
+    }
+    url = f"https://www.instagram.com/p/{SHORTCODE}/"
+    itg = get(url, headers=headers).text
 
-        url_arr = []
-
-        if typename=="GraphSidecar":
-            for p in post.get_sidecar_nodes():
-                url_arr.append(get_link(p))
-        else:
-            url_arr.append(get_link(post))
-         
-        jsona = json.dumps(url_arr)
-        return jsona
-    except:
+    rexcmd = r"window\.\_sharedData \= (.*?);<\/script\>"
+    matches = re.search(rexcmd, itg)
+    x = []
+    if matches:
+        x = matches.group(1)
+        y = json.loads(x)
+        __typename = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["__typename"]
+        ret = []
+        if __typename == "GraphImage":
+            sm = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
+            ret.append(GraphImage(sm))
+        elif __typename == "GraphVideo":
+            sm = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]
+            ret.append(GraphVideo(sm))
+        elif __typename == "GraphSidecar":
+            edge = y["entry_data"]["PostPage"][0]["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]
+            for e in edge:
+                typename = e["node"]["__typename"]
+                sm = e["node"]
+                if typename == "GraphVideo":
+                    ret.append(GraphVideo(sm))
+                else:
+                    ret.append(GraphImage(sm))
+        return json.dumps(ret)
+    else:
         return ""
+
+    # try:
+    #     post = instaloader.Post.from_shortcode(L.context, SHORTCODE)
+    #     typename = post.typename
+
+    #     url_arr = []
+
+    #     if typename=="GraphSidecar":
+    #         for p in post.get_sidecar_nodes():
+    #             url_arr.append(get_link(p))
+    #     else:
+    #         url_arr.append(get_link(post))
+        
+    #     jsona = json.dumps(url_arr)
+    #     return jsona
+    # except:
+    #     return ""
 
 def cek_login(USER, PASS):
     USER = d_url(USER)
@@ -72,16 +115,6 @@ def cek_login(USER, PASS):
 
 def get_story(USERNAME):
     try:
-        # if (cek_login(USER, PASS) != "false"):
-        #     profile = Profile.from_username(L.context, USERNAME)
-        #     proID = profile.userid
-        #     url_arr = []
-        #     for story in L.get_stories(userids=[proID]):
-        #         for item in story.get_items():
-        #             url_arr.append(get_link(item))
-        #     jsona = json.dumps(url_arr)
-        # else:
-        #     jsona = "false login"
         profile = Profile.from_username(L.context, USERNAME)
         proID = profile.userid
         url_arr = []
