@@ -106,8 +106,8 @@ def gp_instloader(SHORTCODE):
 		return ""
 
 def gp_heroku(SHORTCODE):
-	url = f"https://instcoba.herokuapp.com/gp/{SHORTCODE}/"
-	itg = get(url, headers=headers).json()
+	url = f"https://instcoba.herokuapp.com/gp/{SHORTCODE}"
+	itg = get(url, headers=headers).text
 	return itg
 
 def get_post(SHORTCODE):
